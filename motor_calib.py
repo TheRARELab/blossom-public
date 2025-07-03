@@ -3,9 +3,12 @@ import time
 
 # get ports and start connection to motors
 ports = pd.get_available_ports()
+print("port:"ports)
 motors = pd.Dxl320IO(ports[0],1000000)
 
+
 motor_id = motors.scan(range(20))
+print("motor_ids:"motor_id)
 
 # only work with one motor at a time
 if (len(motor_id)>1):
@@ -34,16 +37,16 @@ if new_id_str != '':
     else:
         print("Sorry, didn't work. Unplug and replug the motor and run again.")
 
-# set motor to 100
-motors.set_goal_position({motor_id:100})
-input("Motor position: 100; Attach horn then press 'Enter'. ")
-
 # set motor to 0
 motors.set_goal_position({motor_id:0})
-input("Motor position: 0; Calibrate string length then press 'Enter'. ")
+input("Motor position: 0; Calibrate string and motor")
 
-# set motor back to 100
+# set motor to 100
 motors.set_goal_position({motor_id:100})
-print("Motor position: 100; Calibration complete!")
+input("Motor position: 100")
+
+# set motor back to 0
+motors.set_goal_position({motor_id:0})
+print("Motor position:0 ; Calibration complete!")
 
 quit()
