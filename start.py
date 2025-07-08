@@ -5,6 +5,20 @@ Start up the blossom webserver, CLI client, and web client.
 # make sure that prints will be supported
 from __future__ import print_function
 
+#Libraries for vosk
+import argparse
+import queue
+import sys
+import sounddevice as sd
+import time
+import json
+import datetime
+
+from vosk import Model, KaldiRecognizer
+
+q = queue.Queue()
+
+#orignial libraries
 import sys
 import subprocess
 import argparse
@@ -76,6 +90,21 @@ class SequenceRobot(robot.Robot):
         self.amp = 1.0
         # posture ranges from -100 to 100
         self.post = 0.0
+
+        # Initialize Vosk model and recognizer for ASR and see if it works
+        try:
+            # You might need to specify the path to your Vosk model if it's not in the default location
+            # For example: model = Model("path/to/vosk-model-en-us-small-0.22")
+            self.vosk_model = Model(model_name="vosk-model-small-en-us-0.15", lang="en-us")
+            self.samplerate = 16000 # Standard sample rate for Vosk models
+            self.vosk_recognizer = KaldiRecognizer(self.vosk_model, self.samplerate)
+            self.vosk_recognizer.SetWords(True) # To get word-level timings
+            self.audio_queue = queue.Queue()
+            print("Vosk ASR model loaded successfully.")
+        except Exception as e:
+            self.vosk_model = None
+            print(f"Failed to load Vosk ASR model: {e}")
+            print("Speech-to-text functionality will be unavailable.")
 
     def load_seq(self):
         """
@@ -191,7 +220,77 @@ class SequenceRobot(robot.Robot):
         self.rec_thread = robot.sequence.RecorderPrimitive(self, self.rec_stop)
         self.rec_thread.start()
 
+    def asr_test(self, output_json="speech_logs/recognized_output.json", listen_timeout=None):
+        """
+        Real-time speech recognition using Vosk.
+        Outputs start/end timestamps and transcript to a JSON file.
 
+        Args:
+            output_json (str): Path to the JSON file to append recognition results.
+            listen_timeout (float): Max duration to listen for (seconds). None = infinite.
+        Returns:
+            str: Full concatenated transcript.
+        """
+        if self.vosk_model is None or self.vosk_recognizer is None:
+            print("Vosk model is not loaded. Cannot perform speech recognition.")
+            return ""
+
+        # Ensure output folder exists
+        os.makedirs(os.path.dirname(output_json), exist_ok=True)
+
+        recognized_text = ""
+        start_time = time.time()
+
+        print("#" * 80)
+        print("Press Ctrl+C to stop the recording.")
+        print(f"Recognized speech will be saved to: {output_json}")
+        print("#" * 80)
+
+        try:
+            with open(output_json, "a", encoding="utf-8") as json_out:
+                with sd.RawInputStream(
+                    samplerate=self.samplerate,
+                    blocksize=8000,
+                    dtype="int16",
+                    channels=1,
+                    callback=lambda indata, frames, time_info, status: self.audio_queue.put(bytes(indata))
+                ):
+                    while True:
+                        # Stop listening if time is up
+                        if listen_timeout and (time.time() - start_time > listen_timeout):
+                            print("⏱️ Listen timeout reached.")
+                            break
+
+                        if not self.audio_queue.empty():
+                            data = self.audio_queue.get()
+
+                            if self.vosk_recognizer.AcceptWaveform(data):
+                                result = json.loads(self.vosk_recognizer.Result())
+                                words = result.get("result", [])
+                                text = result.get("text", "").strip()
+
+                                if text and words:
+                                    start_ts = words[0]["start"]
+                                    end_ts = words[-1]["end"]
+                                    segment = {
+                                        "start": start_ts,
+                                        "end": end_ts,
+                                        "text": text
+                                    }
+
+                                    print(segment)
+                                    json.dump(segment, json_out)
+                                    json_out.write("\n")
+                                    json_out.flush()
+                                    recognized_text += text + " "
+
+        except KeyboardInterrupt:
+            print("\n🛑 Recording stopped by user.")
+
+        except Exception as e:
+            print(f"❌ Error during ASR: {e}")
+
+        return recognized_text.strip()
 
 '''
 CLI Code
@@ -562,6 +661,10 @@ def main(args):
     # start server
     start_server(args.host, args.port, args.browser_disable)
 
+    transcript = master_robot.asr_test()
+    print("Final recognized transcript:", transcript)
+
+
 
 def safe_init_robot(name, config):
     """
@@ -588,6 +691,7 @@ def safe_init_robot(name, config):
             attempts -= 1
     return bot
 
+    
 
 def parse_args(args):
     """
