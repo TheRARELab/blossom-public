@@ -11,10 +11,10 @@ import argparse
 import os
 import shutil
 import signal
-from config import RobotConfig
-from src import robot, sequence
-from src.server import server
-from src import server as srvr
+from blossom_public.config import RobotConfig
+from blossom_public.src import robot, sequence
+from blossom_public.src.server import server
+from blossom_public.src import server as srvr
 import threading
 import webbrowser
 import re
