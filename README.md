@@ -1,5 +1,9 @@
 # Blossom
 
+> [!NOTE]
+> This fork updated Python version and dependencies, and allows one to make this repo as git submodule `blossom_public` and use `from blossom_public.start import RobotConfig, safe_init_robot`. Due to [PR #2](https://github.com/TheRARELab/blossom-public/pull/2/files), it itself may no longer work.
+
+
 Blossom is an open-hardware, open-source tensile robot that you can handcraft and accessorize to your liking. You can read more about the project in the [ACM T-HRI Paper](https://doi.org/10.1145/3310356) and in [Evan Ackerman's IEEE Spectrum article](https://spectrum.ieee.org/automaton/robotics/home-robots/blossom-a-creative-handmade-approach-to-social-robotics-from-cornell-and-google).
 
 Here are two examples of Blossom robots:
