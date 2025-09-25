@@ -9,6 +9,9 @@ import sys
 import subprocess
 import argparse
 import os
+
+PACKAGE_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 import shutil
 import signal
 from blossom_public.config import RobotConfig
@@ -83,7 +86,7 @@ class SequenceRobot(robot.Robot):
         TODO - clean this up - try glob or os.walk
         """
         # get directory
-        seq_dir = './src/sequences/%s' % self.name
+        seq_dir = os.path.join(PACKAGE_ROOT, "src", "sequences", self.name)
         # make sure that directory for robot's seqs exist
         if not os.path.exists(seq_dir):
             os.makedirs(seq_dir)
@@ -237,7 +240,7 @@ def handle_quit():
     print("Exiting...")
     for bot in robots:
         # clean up tmp dirs and close robots
-        tmp_dir = './src/sequences/%s/tmp' % bot.name
+        tmp_dir = os.path.join(PACKAGE_ROOT, "src", "sequences", bot.name, "tmp")
         if os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir)
         bot.robot.close()
